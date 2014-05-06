@@ -1,0 +1,206 @@
+<html>
+<head>
+	<title>Batch Search</title>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script>
+		$(document).ready(function(){
+			$("#runbtn").hover(function(){
+				$("#msg").html("Are you ready?");
+			});
+			$("#runbtn").mouseleave(function(){
+				$("#msg").html("Results are displayed below");
+			});
+			$("#runbtn").click(function(){
+				var dbs = document.getElementById("dblist");
+				var selecteddb = dbs.options[dbs.selectedIndex];
+				
+				// decide which database is searched
+				switch(selecteddb.value){
+				case "wiki": $.fn.queryWiki(); break;
+				case "gscholar": $.fn.queryGeneral("http://scholar.google.com/scholar?hl=en&btnG=&as_sdt=1%2C50&as_sdtp=&q=","Google Scholar"); break;
+				case "drugbank": $.fn.queryGeneral("http://www.drugbank.ca/search?utf8=%E2%9C%93&search_type=drugs&button=&query=","DrugBank"); break;
+				case "druginfo": $.fn.queryGeneral("http://druginfo.nlm.nih.gov/drugportal/ProxyServlet?mergeData=true&objectHandle=DBMaint&APPLICATION_NAME=drugportal&actionHandle=default&nextPage=jsp/drugportal/ResultScreen.jsp&TXTSUPERLISTID=0188062502&QV1=","Drug Information Portal"); break;
+				case "sigma": $.fn.queryGeneral("http://www.sigmaaldrich.com/catalog/search?interface=All&N=0&mode=match%20partialmax&focus=product&lang=en&region=US&term=","SIGMA-ALDRICH"); break;
+				case "kegg": $.fn.queryGeneral("http://www.genome.jp/dbget-bin/www_bfind_sub?mode=bfind&max_hit=1000&dbkey=kegg&keywords=","KEGG"); break;
+				default:break;
+				}
+			});
+			$.fn.queryWiki = function(){
+				//$("#output").html("run application");
+				var list = $("#input").val();
+				if (list != ""){					
+					var listitems = list.split("\n");
+					var rawurl = "http://en.wikipedia.org/w/api.php?action=query&format=json&prop=info&inprop=url&titles="+listitems[0];
+					var listlen = listitems.length;
+					for (var i = 1; i < listlen; i++){
+						rawurl = rawurl + "|" + listitems[i];
+					}
+					$.ajax({
+						url: encodeURI(rawurl),
+						dataType: 'jsonp',
+						success: function(data){
+							var reformatData = {};
+							var pages = data["query"]["pages"];
+							for (var key in pages){
+								if(pages.hasOwnProperty(key)){
+									if (parseInt(key) > 0){
+										reformatData[pages[key]["title"].toLowerCase()]=pages[key];
+									}
+								}
+							}
+							var output = "";
+							var listitems = $("#input").val().split("\n");
+							var listlen = listitems.length;
+							for (var i = 0; i < listlen; i++){
+								var itemkey = listitems[i];
+								output = output + itemkey + " - ";
+								var item = reformatData[itemkey.toLowerCase()];
+								if (typeof item == 'undefined'){
+									output = output + "No wikipage<br/>";
+								}else{
+									output = output + "<a href=" + item["fullurl"] + ">Wikipage</a><br/>";
+								}
+							}
+							$('#output').html(output);
+						},
+						error: function(xhr){
+							$('#output').html("failed :(");
+						}
+					});
+				}else{
+					$("#output").html("No input list!");
+				}
+			}
+			$.fn.queryGeneral = function(url_pre, dbname){
+				var list = $("#input").val();
+				if (list != ""){
+					var listitems = list.split("\n");
+					var output = "";					
+					for (var i = 0; i < listitems.length; i++){
+						var itemkey = listitems[i];
+						if (itemkey != ""){
+							output = output + itemkey;
+							output = output + " - <a href = '";
+							output = output + url_pre;
+							output = output + listitems[i];
+							output = output + "'>";
+							output = output + dbname;
+							output = output + " result list</a><br/>";
+						}else{
+							output = output + " - No ";
+							output = output + dbname;
+							output = output + " result<br/>";
+						}
+					}
+					$("#output").html(output);
+				}else{
+					$("#output").html("No input list!");
+				}
+			}
+		})
+    </script>
+	<script>
+		function requestwiki(){
+			var inputlist = document.getElementById("input").value;
+			result = requestwikiparse(inputlist);
+			document.getElementById("output").innerHTML = result;
+		}
+		// This function is not working correctly for cross-domain requests and is under developement.
+		function requestwikiparse(inputlist){
+			var list = inputlist.split("\n");
+			var result = "";
+			for (var i=0; i<list.length;i++){				
+				var xmlhttp;
+				if (window.XMLHttpRequest)
+				{// code for IE7+, Firefox, Chrome, Opera, Safari
+					xmlhttp=new XMLHttpRequest();
+				}
+				else
+				{// code for IE6, IE5
+					xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				xmlhttp.onreadystatechange=function()
+				{
+					alert(xmlhttp.status.toString());
+					if (xmlhttp.readyState==4)
+					{
+						//document.getElementById("output").innerHTML=xmlhttp.responseText;
+						var xmlresult = xmlhttp.responseXML;
+						if(!xmlresult){
+							alert("empty response!");
+						}
+						else{
+							alert("solid response!");
+							document.getElementById("output").innerHTML = xmlhttp.responseText;
+							//var page = xmlresult.getElementsByTagName("page");
+							//var pageid = page.getAttribute("pageid");
+							//var pageurl = page.getAttribute("fullurl");
+							//if (isNaN(pageid)){
+								//alter("no wikipage documented <br/>");
+							//}
+							//else{
+								//document.getElementById("output").innerHTML = pageurl;
+							//}
+						}
+					}
+				}
+				var item = list[i];
+				var url = encodeURI("http://en.wikipedia.org/w/api.php?action=query&format=xml&prop=info&inprop=url&titles="+item);
+				xmlhttp.open("GET",url,true);
+				xmlhttp.send();
+				result = result + item + " - " + "<a href="+url+">"+url+"</a><br/>";
+				//if (isNaN(xmlhttp.responseXML)){
+				//	alert("empty result!");
+				//}else{
+					// var xmlresult = xmlhttp.responseXML.getElementsByTagName('api');
+					//result = result + xmlhttp.responseText + "<br/>";
+				//}
+			}
+			return result;
+		}
+		function readLocal(file)
+		{
+			var xmlhttp;
+			if (window.XMLHttpRequest)
+			{// code for IE7+, Firefox, Chrome, Opera, Safari
+				xmlhttp=new XMLHttpRequest();
+			}
+			else
+			{// code for IE6, IE5
+				xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+			}
+			xmlhttp.onreadystatechange=function()
+			{
+				if (xmlhttp.readyState==4 && xmlhttp.status==200)
+				{
+					document.getElementById("output").innerHTML=xmlhttp.responseText;
+				}
+			}
+			xmlhttp.open("GET",file,true);
+			xmlhttp.send();
+		}
+	</script>
+</head>
+<body>
+<table>
+	<tr>
+		<td><b>Paste your list of searching items below</b></td>
+		<td><button id="runbtn" type="button">Request</button>
+			<select id="dblist">
+				<option value="wiki">Wiki</option>
+				<option value="gscholar">Google Scholar</option>
+				<option value="drugbank">DrugBank</option>
+				<option value="druginfo">Drug Information Portal</option>
+				<option value="sigma">SIGMA-ALDRICH</option>
+				<option value="kegg">KEGG</option>
+			</select>
+			<span id="msg">Results are displayed below</span>
+		</td>
+	</tr>
+	<tr>
+		<td style="vertical-align:top"><textarea id="input" style="width:500px;height:800px"></textarea></td>
+		<td style="vertical-align:top"><div style="background-color:#CCFFFF;width:750px;height:800px;overflow-y:scroll;"><p id="output"></p></div></td>
+	</tr>
+</table>
+</body>
+</html>
