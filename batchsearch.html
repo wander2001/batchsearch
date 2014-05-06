@@ -25,6 +25,35 @@
 				default:break;
 				}
 			});
+			
+			// Accepts a url and a callback function to run.
+			function requestCrossDomain( site, callback ) {
+				 
+				// If no url was passed, exit.
+				if ( !site ) {
+					alert('No site was passed.');
+					return false;
+				}
+				 
+				// Take the provided url, and add it to a YQL query. Make sure you encode it!
+				var yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + site + '"') + '&format=xml&callback=';
+				 
+				// Request that YSQL string, and run a callback function.
+				// Pass a defined function to prevent cache-busting.
+				$.ajax({
+					url: yql,
+					dataType: 'text',
+					success: function(data){
+						$('#output').html(data);
+					},
+					error: function(xhr){
+						$('#output').html("failed :(");
+					}
+				});
+			}
+
+			
+			
 			$.fn.queryWiki = function(){
 				//$("#output").html("run application");
 				var list = $("#input").val();
@@ -71,28 +100,12 @@
 					$("#output").html("No input list!");
 				}
 			}
-			$.fn.queryGeneral = function(url_pre, dbname){
+			
+			$.fn.queryGeneral = function(url, dbname){
 				var list = $("#input").val();
 				if (list != ""){
 					var listitems = list.split("\n");
-					var output = "";					
-					for (var i = 0; i < listitems.length; i++){
-						var itemkey = listitems[i];
-						if (itemkey != ""){
-							output = output + itemkey;
-							output = output + " - <a href = '";
-							output = output + url_pre;
-							output = output + listitems[i];
-							output = output + "'>";
-							output = output + dbname;
-							output = output + " result list</a><br/>";
-						}else{
-							output = output + " - No ";
-							output = output + dbname;
-							output = output + " result<br/>";
-						}
-					}
-					$("#output").html(output);
+					requestCrossDomain(url + encodeURIComponent(listitems[0]));
 				}else{
 					$("#output").html("No input list!");
 				}
